@@ -1,0 +1,90 @@
+name: Build Docker CI
+
+on:
+  push:
+    branches: [ main ]
+#  pull_request:
+#    branches: [ main ]
+
+env:
+  IMAGE_NAME: microservices
+  REPO_NAME: repo
+  GCP_PROJECT_ID: gen-lang-client-0465524346
+  GKE_REGION: us-central1
+  GKE_DOCKER_HUB: us-central1-docker.pkg.dev
+  GKE_CLUSTER_ID: autopilot-cluster-1
+  DEPLOYMENT_NAME: microservice
+  CONTAINER_NAME: container
+
+jobs:
+  build-push:
+    runs-on: ubuntu-latest
+    outputs:
+        image_tag: ${{ steps.meta.outputs.tag }}
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: Test
+        run: go test -v
+
+      - name: Generate env file
+        run: sed -e 's/DB_HOST=/DB_HOST=${{secrets.DB_HOST}}/'
+          -e 's/DB_PASSWORD=/DB_PASSWORD=${{secrets.DB_PASSWORD}}/' .env.example > .env
+
+      - name: Export Date Env
+        id: meta
+        run: echo "tag=$(TZ=Asia/Shanghai date +'%Y-%m-%d-%H-%M-%S')" >> $GITHUB_OUTPUT
+
+      # 1、认证 GCP
+      - name: Authenticate to GCP
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GCP_SA_KEY }}
+      
+      # 2、设置 gcloud
+      - name: Setup gcloud
+        uses: google-github-actions/setup-gcloud@v2
+
+      # 3、配置 Docker 认证
+      - name: Configure Docker
+        run: |
+          gcloud auth configure-docker ${GKE_DOCKER_HUB}
+
+      # 4、构建并推送镜像
+      - name: Build and Push Docker Image
+        run: |
+          docker build -t ${GKE_DOCKER_HUB}/${GCP_PROJECT_ID}/${REPO_NAME}/${IMAGE_NAME}:${{steps.meta.outputs.tag}} .
+#          docker push ${GKE_DOCKER_HUB}/${GCP_PROJECT_ID}/${REPO_NAME}/${IMAGE_NAME}:${{steps.meta.outputs.tag}}
+
+#  deploy:
+#    needs: build-push
+#    runs-on: ubuntu-latest
+#    steps:
+#      # 1、认证 GCP
+#      - name: Authenticate to GCP
+#        uses: google-github-actions/auth@v2
+#        with:
+#          credentials_json: ${{ secrets.GCP_SA_KEY }}
+#
+#      # 2、设置 gcloud
+#      - name: Setup gcloud
+#        uses: google-github-actions/setup-gcloud@v2
+#        with:
+#          export_default_credentials: true
+#
+#      # 3、安装插件
+#      - name: Install gke-gcloud-auth-plugin
+#        run: gcloud components install gke-gcloud-auth-plugin
+#
+#      # 4、获取 GKE 凭证
+#      - name: Get GKE credentials
+#        run: |
+#          gcloud container clusters get-credentials ${GKE_CLUSTER_ID} \
+#            --region ${GKE_REGION} \
+#            --project ${GCP_PROJECT_ID}
+
+#      # 5、部署到 GKE
+#      - name: Deploy
+#        run: |
+#          kubectl set image deployment/${DEPLOYMENT_NAME} \
+#            ${CONTAINER_NAME}=${GKE_DOCKER_HUB}/${GCP_PROJECT_ID}/${REPO_NAME}/${IMAGE_NAME}:${{needs.build-push.outputs.image_tag}}
