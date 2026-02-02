@@ -6,8 +6,8 @@ import (
 	"microservices/entity/request"
 	"microservices/entity/response"
 	"microservices/logic"
-	"microservices/model"
 	"microservices/pkg/util"
+	"microservices/repo"
 	"microservices/service"
 	"strconv"
 )
@@ -33,7 +33,7 @@ func (n *notifyController) SendEmail(c *gin.Context) (*response.SendEmail, error
 	panic("implement me")
 }
 
-func NewNotifyController(model model.Factory, cache cache.Factory, service service.Factory) NotifyController {
+func NewNotifyController(model repo.Factory, cache cache.Factory, service service.Factory) NotifyController {
 	return &notifyController{
 		logic: logic.NewLogic(model, cache, service),
 	}

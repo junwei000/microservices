@@ -6,7 +6,7 @@ import (
 	"microservices/cache"
 	entity "microservices/entity/model"
 	"microservices/entity/request"
-	"microservices/model"
+	"microservices/repo"
 	"microservices/service"
 )
 
@@ -20,14 +20,14 @@ type Logic interface {
 }
 
 type logic struct {
-	model model.Factory
+	repo  repo.Factory
 	cache cache.Factory
 	srv   service.Factory
 }
 
-func NewCallback(model model.Factory, cache cache.Factory, service service.Factory) Logic {
+func NewCallback(repo repo.Factory, cache cache.Factory, service service.Factory) Logic {
 	return &logic{
-		model: model,
+		repo:  repo,
 		cache: cache,
 		srv:   service,
 	}

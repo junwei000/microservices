@@ -3,42 +3,42 @@ package user
 import (
 	"context"
 	"microservices/cache"
-	entity "microservices/entity/model"
-	"microservices/model"
+	"microservices/entity/model"
+	"microservices/repo"
 	"microservices/service"
 )
 
 // Logic defines functions used to handle user api.
 type Logic interface {
-	Create(ctx context.Context, user *entity.User) error
-	GetByUid(ctx context.Context, uid int) (*entity.User, error)
-	List(ctx context.Context) ([]entity.User, error)
+	Create(ctx context.Context, user *model.User) error
+	GetByUid(ctx context.Context, uid int) (*model.User, error)
+	List(ctx context.Context) ([]model.User, error)
 	Edit(ctx context.Context, id int, name, email, phone *string) error
 }
 
 type logic struct {
-	model model.Factory
+	model repo.Factory
 	cache cache.Factory
 	srv   service.Factory
 }
 
-func NewLogic(model model.Factory, cache cache.Factory, service service.Factory) Logic {
+func NewLogic(model repo.Factory, cache cache.Factory, service service.Factory) Logic {
 	return &logic{model: model, cache: cache, srv: service}
 }
 
 // Create .
-func (u *logic) Create(ctx context.Context, user *entity.User) error {
+func (u *logic) Create(ctx context.Context, user *model.User) error {
 	//return u.model.User().Create(ctx, user)
 	return nil
 }
 
 // GetByUid .
-func (u *logic) GetByUid(ctx context.Context, uid int) (*entity.User, error) {
+func (u *logic) GetByUid(ctx context.Context, uid int) (*model.User, error) {
 	return u.model.User().GetByUid(ctx, uid)
 }
 
 // List .
-func (u *logic) List(ctx context.Context) ([]entity.User, error) {
+func (u *logic) List(ctx context.Context) ([]model.User, error) {
 	//return u.model.User().List(ctx)
 	return nil, nil
 }

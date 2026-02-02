@@ -68,7 +68,7 @@ func (l *logic) HandleAppleCallback(ctx context.Context, notification *request.A
 			} else {
 				txdata, _ := util.StructToMap(*transactionInfo)
 				log.Info(ctx, "apple_transaction_info", txdata)
-				order, err := l.model.Order().GetByOutTradeNo(ctx, transactionInfo.AppAccountToken)
+				order, err := l.repo.Order().GetByOutTradeNo(ctx, transactionInfo.AppAccountToken)
 				if err != nil {
 					return err
 				}

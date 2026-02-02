@@ -3,7 +3,7 @@ package notify
 import (
 	"context"
 	"microservices/cache"
-	"microservices/model"
+	"microservices/repo"
 	"microservices/service"
 )
 
@@ -12,7 +12,7 @@ type Logic interface {
 }
 
 type logic struct {
-	model model.Factory
+	repo  repo.Factory
 	cache cache.Factory
 	srv   service.Factory
 }
@@ -24,9 +24,9 @@ func (n *logic) SendSmsCode(ctx context.Context, phone string, code string) erro
 	return n.srv.Aliyun().SendSMSCode(ctx, phone, code)
 }
 
-func NewNotify(model model.Factory, cache cache.Factory, service service.Factory) Logic {
+func NewNotify(repo repo.Factory, cache cache.Factory, service service.Factory) Logic {
 	return &logic{
-		model: model,
+		repo:  repo,
 		cache: cache,
 		srv:   service,
 	}

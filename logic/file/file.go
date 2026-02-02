@@ -7,9 +7,9 @@ import (
 	"fmt"
 	"io"
 	"microservices/cache"
-	entity "microservices/entity/model"
+	"microservices/entity/model"
 	"microservices/entity/response"
-	"microservices/model"
+	"microservices/repo"
 	"microservices/service"
 	"net/http"
 	"strings"
@@ -18,21 +18,21 @@ import (
 
 type Logic interface {
 	UploadFile(ctx context.Context, userId int, fileContent []byte, fileType int, fileOriginName string,
-		fileSuffix string) (*entity.File, error)
-	UploadFromUrl(ctx context.Context, userId int, url string, fileType int) (*entity.File, error)
+		fileSuffix string) (*model.File, error)
+	UploadFromUrl(ctx context.Context, userId int, url string, fileType int) (*model.File, error)
 	List(ctx context.Context, uid int, page, size int) (*response.GetFilesResp, error)
 	Detail(ctx context.Context, uid int, id int) (*response.FileDetailResp, error)
 }
 
 type logic struct {
-	model model.Factory
+	repo  repo.Factory
 	cache cache.Factory
 	srv   service.Factory
 }
 
-func NewLogic(model model.Factory, cache cache.Factory, srv service.Factory) Logic {
+func NewLogic(repo repo.Factory, cache cache.Factory, srv service.Factory) Logic {
 	return &logic{
-		model: model,
+		repo:  repo,
 		cache: cache,
 		srv:   srv,
 	}
@@ -40,7 +40,7 @@ func NewLogic(model model.Factory, cache cache.Factory, srv service.Factory) Log
 
 // UploadFile 将用户上传的所有文件在本地进行缓存
 func (l *logic) UploadFile(ctx context.Context, userId int, fileContent []byte, fileType int, fileOriginName string,
-	fileSuffix string) (*entity.File, error) {
+	fileSuffix string) (*model.File, error) {
 	filename, md5Hash := l.GenerateFilenameByHash(ctx, fileContent, fileSuffix)
 
 	// Using Cloudflare R2
@@ -55,7 +55,7 @@ func (l *logic) UploadFile(ctx context.Context, userId int, fileContent []byte, 
 	if err != nil {
 		return nil, err
 	}
-	fileData := &entity.File{
+	fileData := &model.File{
 		UserId:       userId,
 		Url:          url,
 		FileKey:      filename,
@@ -67,7 +67,7 @@ func (l *logic) UploadFile(ctx context.Context, userId int, fileContent []byte, 
 		Status:       1,
 		CreatedAt:    time.Now(),
 	}
-	if err := l.model.File().Create(ctx, fileData); err != nil {
+	if err := l.repo.File().Create(ctx, fileData); err != nil {
 		return nil, err
 	}
 	// Sign URL for response
@@ -94,7 +94,7 @@ func (l *logic) GenerateFilenameByHash(ctx context.Context, fileContent []byte, 
 
 func (l *logic) List(ctx context.Context, uid int, page, size int) (*response.GetFilesResp, error) {
 	offset := (page - 1) * size
-	total, files, err := l.model.File().GetList(ctx, uid, offset, size)
+	total, files, err := l.repo.File().GetList(ctx, uid, offset, size)
 	if err != nil {
 		return nil, err
 	}
@@ -117,7 +117,7 @@ func (l *logic) List(ctx context.Context, uid int, page, size int) (*response.Ge
 }
 
 func (l *logic) Detail(ctx context.Context, uid int, id int) (*response.FileDetailResp, error) {
-	file, err := l.model.File().GetByIdAndUserId(ctx, id, uid)
+	file, err := l.repo.File().GetByIdAndUserId(ctx, id, uid)
 	if err != nil {
 		return nil, err
 	}
@@ -126,7 +126,7 @@ func (l *logic) Detail(ctx context.Context, uid int, id int) (*response.FileDeta
 	}, nil
 }
 
-func (l *logic) UploadFromUrl(ctx context.Context, userId int, url string, fileType int) (*entity.File, error) {
+func (l *logic) UploadFromUrl(ctx context.Context, userId int, url string, fileType int) (*model.File, error) {
 	// 1. Download Content
 	// Simple HTTP GET. In prod use context aware client with timeout
 	resp, err := http.Get(url) // Note: context not used here for simplicity but should be

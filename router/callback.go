@@ -4,12 +4,12 @@ import (
 	"microservices/cache"
 	"microservices/controller"
 	"microservices/logic"
-	"microservices/model"
+	"microservices/repo"
 	"microservices/service"
 )
 
 func init() {
-	l := logic.NewLogic(model.NewFactory(), cache.NewFactory(), service.NewFactory())
+	l := logic.NewLogic(repo.NewFactory(), cache.NewFactory(), service.NewFactory())
 	c := controller.NewCallbackController(l)
 	router.GET("/callback/google-auth", c.GoogleAuthCallback)
 	router.POST("/callback/alipay-notify", c.AlipayNotify)

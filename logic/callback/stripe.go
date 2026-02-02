@@ -41,7 +41,7 @@ func (l *logic) HandleStripeCallback(ctx context.Context, payload []byte, header
 		userId, _ := strconv.Atoi(userIdStr)
 		orderId, _ := strconv.Atoi(orderIdStr)
 
-		order, err := l.model.Order().GetByIdAndUserId(ctx, orderId, userId)
+		order, err := l.repo.Order().GetByIdAndUserId(ctx, orderId, userId)
 		if err != nil {
 			log.Error(ctx, "stripe_pi_order_not_found", err, map[string]any{"orderId": orderId})
 			return err
@@ -53,7 +53,7 @@ func (l *logic) HandleStripeCallback(ctx context.Context, payload []byte, header
 		}
 
 		// Update Order Status to 1 (Paid)
-		err = l.model.Order().Update(ctx, order.ID, map[string]interface{}{
+		err = l.repo.Order().Update(ctx, order.ID, map[string]interface{}{
 			"status":  consts.OrderStatusPaid,
 			"paid_at": time.Now(),
 		})
@@ -62,11 +62,11 @@ func (l *logic) HandleStripeCallback(ctx context.Context, payload []byte, header
 			return err
 		}
 
-		goods, err := l.model.Goods().GetByPriceId(ctx, priceId)
+		goods, err := l.repo.Goods().GetByPriceId(ctx, priceId)
 		if err != nil {
 			return err
 		}
-		err = l.model.User().Update(ctx, order.UserId, map[string]any{
+		err = l.repo.User().Update(ctx, order.UserId, map[string]any{
 			"credit": gorm.Expr("credit + ?", goods.Credit),
 		})
 		if err != nil {

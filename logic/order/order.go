@@ -6,7 +6,7 @@ import (
 	entity "microservices/entity/model"
 	"microservices/entity/request"
 	"microservices/entity/response"
-	"microservices/model"
+	"microservices/repo"
 	"microservices/service"
 )
 
@@ -22,27 +22,27 @@ type Logic interface {
 }
 
 type logic struct {
-	model model.Factory
+	repo  repo.Factory
 	cache cache.Factory
 	srv   service.Factory
 }
 
-func NewLogic(model model.Factory, cache cache.Factory, service service.Factory) Logic {
-	return &logic{model: model, cache: cache, srv: service}
+func NewLogic(repo repo.Factory, cache cache.Factory, service service.Factory) Logic {
+	return &logic{repo: repo, cache: cache, srv: service}
 }
 
 func (l *logic) GetDetail(ctx context.Context, id, userId int) (*entity.Order, error) {
-	return l.model.Order().GetByIdAndUserId(ctx, id, userId)
+	return l.repo.Order().GetByIdAndUserId(ctx, id, userId)
 }
 
 func (l *logic) GetList(ctx context.Context, userID int, req *request.GetOrderListRequest) (*response.GetOrderListResponse, error) {
-	total, err := l.model.Order().CountByUserId(ctx, uint64(userID))
+	total, err := l.repo.Order().CountByUserId(ctx, uint64(userID))
 	if err != nil {
 		return nil, err
 	}
 
 	offset := (req.Page - 1) * req.PageSize
-	orders, err := l.model.Order().GetByUserId(ctx, uint64(userID), req.PageSize, offset)
+	orders, err := l.repo.Order().GetByUserId(ctx, uint64(userID), req.PageSize, offset)
 	if err != nil {
 		return nil, err
 	}

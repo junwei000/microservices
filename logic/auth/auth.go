@@ -9,18 +9,18 @@ import (
 	"microservices/entity/consts"
 	"microservices/entity/ecode"
 	"microservices/entity/jwt"
-	entity "microservices/entity/model"
-	"microservices/model"
+	"microservices/entity/model"
 	"microservices/pkg/util"
+	"microservices/repo"
 	"microservices/service"
 	"time"
 )
 
 // Logic defines functions used to handle user api.
 type Logic interface {
-	Login(ctx context.Context, name, email, phone, password, smsCode, emailCode *string) (*entity.User, string, error)
+	Login(ctx context.Context, name, email, phone, password, smsCode, emailCode *string) (*model.User, string, error)
 	Logout(ctx context.Context, uid int) error
-	Register(ctx context.Context, name, email, phone, password *string) (*entity.User, string, error)
+	Register(ctx context.Context, name, email, phone, password *string) (*model.User, string, error)
 	ChangePassword(ctx context.Context, uid int, newPassword string, oldPassword string) error
 	ChangePasswordByPhone(ctx context.Context, newPassword, phone, smsCode string) error
 	VerifyPassword(password string, inputPasswd string) bool
@@ -30,39 +30,39 @@ type Logic interface {
 }
 
 type logic struct {
-	model model.Factory
+	repo  repo.Factory
 	cache cache.Factory
 	srv   service.Factory
 }
 
-func NewAuth(model model.Factory, cache cache.Factory, service service.Factory) Logic {
+func NewAuth(repo repo.Factory, cache cache.Factory, service service.Factory) Logic {
 	return &logic{
-		model: model,
+		repo:  repo,
 		cache: cache,
 		srv:   service,
 	}
 }
 
 // GetUserByIdentity .
-func (a *logic) GetUserByIdentity(ctx context.Context, name, email, phone *string) (*entity.User, error) {
+func (a *logic) GetUserByIdentity(ctx context.Context, name, email, phone *string) (*model.User, error) {
 	if name == nil && email == nil && phone == nil {
 		return nil, errors.New("必须传入一个标识用户的参数")
 	}
-	var user *entity.User
+	var user *model.User
 	var err error
 	switch {
 	case name != nil:
-		user, err = a.model.User().GetByName(ctx, *name)
+		user, err = a.repo.User().GetByName(ctx, *name)
 	case email != nil:
-		user, err = a.model.User().GetByEmail(ctx, *email)
+		user, err = a.repo.User().GetByEmail(ctx, *email)
 	case phone != nil:
-		user, err = a.model.User().GetByPhone(ctx, *phone)
+		user, err = a.repo.User().GetByPhone(ctx, *phone)
 	}
 	return user, err
 }
 
 // Login .
-func (a *logic) Login(ctx context.Context, name, email, phone, password, smsCode, emailCode *string) (*entity.User,
+func (a *logic) Login(ctx context.Context, name, email, phone, password, smsCode, emailCode *string) (*model.User,
 	string, error) {
 	user, err := a.GetUserByIdentity(ctx, name, email, phone)
 	if err != nil {
@@ -105,7 +105,7 @@ func (a *logic) Login(ctx context.Context, name, email, phone, password, smsCode
 	if err := a.cache.User().SetToken(ctx, user.ID, token); err != nil {
 		return nil, "", err
 	}
-	if err := a.model.User().Update(ctx, user.ID, map[string]any{
+	if err := a.repo.User().Update(ctx, user.ID, map[string]any{
 		"login_at": time.Now(),
 	}); err != nil {
 		return nil, "", err
@@ -129,11 +129,11 @@ func (a *logic) Logout(ctx context.Context, uid int) error {
 }
 
 // Register .
-func (a *logic) Register(ctx context.Context, name, email, phone, password *string) (*entity.User, string, error) {
+func (a *logic) Register(ctx context.Context, name, email, phone, password *string) (*model.User, string, error) {
 	var userName, userEmail, userPhone, userpPassword string
 	if name != nil {
 		userName = *name
-		exist, err := a.model.User().GetByName(ctx, *name)
+		exist, err := a.repo.User().GetByName(ctx, *name)
 		if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, "", err
 		}
@@ -143,7 +143,7 @@ func (a *logic) Register(ctx context.Context, name, email, phone, password *stri
 	}
 	if email != nil {
 		userEmail = *email
-		exist, err := a.model.User().GetByEmail(ctx, *email)
+		exist, err := a.repo.User().GetByEmail(ctx, *email)
 		if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, "", err
 		}
@@ -153,7 +153,7 @@ func (a *logic) Register(ctx context.Context, name, email, phone, password *stri
 	}
 	if phone != nil {
 		userPhone = *phone
-		exist, err := a.model.User().GetByPhone(ctx, *phone)
+		exist, err := a.repo.User().GetByPhone(ctx, *phone)
 		if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, "", err
 		}
@@ -164,7 +164,7 @@ func (a *logic) Register(ctx context.Context, name, email, phone, password *stri
 	if password != nil {
 		userpPassword = *password
 	}
-	user := &entity.User{
+	user := &model.User{
 		Name:     userName,
 		Email:    userEmail,
 		Phone:    userPhone,
@@ -172,7 +172,7 @@ func (a *logic) Register(ctx context.Context, name, email, phone, password *stri
 		Status:   consts.UserStatusNormal,
 		LoginAt:  time.Now(),
 	}
-	if err := a.model.User().Create(ctx, user); err != nil {
+	if err := a.repo.User().Create(ctx, user); err != nil {
 		return nil, "", err
 	}
 	token, err := jwt.NewJwt(config.NewJwtOptions()).GenerateToken(user.ID)
@@ -187,14 +187,14 @@ func (a *logic) Register(ctx context.Context, name, email, phone, password *stri
 
 // ChangePassword .
 func (a *logic) ChangePassword(ctx context.Context, uid int, newPassword string, oldPassword string) error {
-	user, err := a.model.User().GetByUid(ctx, uid)
+	user, err := a.repo.User().GetByUid(ctx, uid)
 	if err != nil {
 		return err
 	}
 	if !a.VerifyPassword(user.Password, oldPassword) {
 		return ecode.ErrInvalidPassword
 	}
-	if err := a.model.User().Update(ctx, uid, map[string]any{
+	if err := a.repo.User().Update(ctx, uid, map[string]any{
 		"password": a.GeneratePasswordHash(newPassword),
 	}); err != nil {
 		return err
@@ -207,11 +207,11 @@ func (a *logic) ChangePasswordByPhone(ctx context.Context, newPassword, phone, s
 	if err := a.VerifySmsCode(ctx, phone, smsCode); err != nil {
 		return err
 	}
-	user, err := a.model.User().GetByPhone(ctx, phone)
+	user, err := a.repo.User().GetByPhone(ctx, phone)
 	if err != nil {
 		return err
 	}
-	if err := a.model.User().Update(ctx, user.ID, map[string]any{
+	if err := a.repo.User().Update(ctx, user.ID, map[string]any{
 		"password": a.GeneratePasswordHash(newPassword),
 	}); err != nil {
 		return err

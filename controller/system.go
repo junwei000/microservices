@@ -5,7 +5,7 @@ import (
 	"microservices/cache"
 	"microservices/entity/response"
 	"microservices/logic"
-	"microservices/model"
+	"microservices/repo"
 	"microservices/service"
 )
 
@@ -24,7 +24,7 @@ func (s *systemController) Health(c *gin.Context) (*response.Health, error) {
 	}, nil
 }
 
-func NewSystemController(model model.Factory, cache cache.Factory, service service.Factory) SystemController {
+func NewSystemController(model repo.Factory, cache cache.Factory, service service.Factory) SystemController {
 	return &systemController{
 		logic: logic.NewLogic(model, cache, service),
 	}

@@ -7,7 +7,7 @@ import (
 	"microservices/entity/request"
 	"microservices/entity/response"
 	"microservices/logic"
-	"microservices/model"
+	"microservices/repo"
 	"microservices/service"
 )
 
@@ -67,7 +67,7 @@ func (u *userController) GetUserInfo(c *gin.Context) (*response.GetUser, error) 
 }
 
 // NewUserController .
-func NewUserController(model model.Factory, cache cache.Factory, service service.Factory) UserController {
+func NewUserController(model repo.Factory, cache cache.Factory, service service.Factory) UserController {
 	return &userController{
 		logic: logic.NewLogic(model, cache, service),
 	}

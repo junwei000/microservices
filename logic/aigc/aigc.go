@@ -8,8 +8,8 @@ import (
 	"microservices/logic/auth"
 	"microservices/pkg/log"
 
-	entity "microservices/entity/model"
-	"microservices/model"
+	"microservices/entity/model"
+	"microservices/repo"
 	"microservices/service"
 
 	"microservices/entity/consts"
@@ -26,22 +26,22 @@ type GenerationLogic interface {
 }
 
 type generationLogic struct {
-	model     model.Factory
+	repo      repo.Factory
 	cache     cache.Factory
 	service   service.Factory
 	authLogic auth.Logic
 }
 
-func NewGenerationLogic(model model.Factory, cache cache.Factory, service service.Factory) GenerationLogic {
+func NewGenerationLogic(repo repo.Factory, cache cache.Factory, service service.Factory) GenerationLogic {
 	return &generationLogic{
-		model:     model,
+		repo:      repo,
 		cache:     cache,
 		service:   service,
-		authLogic: auth.NewAuth(model, cache, service),
+		authLogic: auth.NewAuth(repo, cache, service),
 	}
 }
 
-func (l *generationLogic) Generate(ctx context.Context, apiKey, model, prompt string) (uint64, error) {
+func (l *generationLogic) Generate(ctx context.Context, apiKey, aigcModel, prompt string) (uint64, error) {
 	authUser, err := l.authLogic.GetAuthUser(ctx)
 	if err != nil {
 		return 0, err
@@ -55,17 +55,17 @@ func (l *generationLogic) Generate(ctx context.Context, apiKey, model, prompt st
 		return 0, fmt.Errorf("Generate already in progress")
 	}
 	// Create Generation Record
-	gen := &entity.Generation{
+	gen := &model.Generation{
 		UserID:    authUser.Uid,
 		Type:      "text",
-		ModelName: model,
+		ModelName: aigcModel,
 		Prompt:    prompt, // todo 补全用户 prompt
-		Status:    entity.GenerationStatusPending,
+		Status:    model.GenerationStatusPending,
 		CreatedAt: time.Now(),
 		UpdatedAt: time.Now(),
 	}
 
-	if err := l.model.Generation().Create(ctx, gen); err != nil {
+	if err := l.repo.Generation().Create(ctx, gen); err != nil {
 		return 0, err
 	}
 
@@ -78,7 +78,7 @@ func (l *generationLogic) Generate(ctx context.Context, apiKey, model, prompt st
 		resp, err := l.service.Google().GenerateContent(
 			ctx,
 			apiKey,
-			model,
+			aigcModel,
 			[]*genai.Part{
 				{Text: prompt},
 			},
@@ -89,14 +89,14 @@ func (l *generationLogic) Generate(ctx context.Context, apiKey, model, prompt st
 			},
 		)
 
-		status := entity.GenerationStatusFailed
+		status := model.GenerationStatusFailed
 		content := ""
 		if err == nil && resp != nil && len(resp.Candidates) > 0 && len(resp.Candidates[0].Content.Parts) > 0 {
-			status = entity.GenerationStatusSuccess
+			status = model.GenerationStatusSuccess
 			content = resp.Candidates[0].Content.Parts[0].Text
 		}
 
-		if err := l.model.Generation().Update(ctx, genID, map[string]interface{}{
+		if err := l.repo.Generation().Update(ctx, genID, map[string]interface{}{
 			"status":       status,
 			"content_text": content,
 			"updated_at":   time.Now(),
@@ -109,7 +109,7 @@ func (l *generationLogic) Generate(ctx context.Context, apiKey, model, prompt st
 }
 
 func (l *generationLogic) List(ctx context.Context, uid int, page, size int) (*response.GetGenerationsResp, error) {
-	gens, total, err := l.model.Generation().ListByUserID(ctx, uid, page, size)
+	gens, total, err := l.repo.Generation().ListByUserID(ctx, uid, page, size)
 	if err != nil {
 		return nil, err
 	}
@@ -119,7 +119,7 @@ func (l *generationLogic) List(ctx context.Context, uid int, page, size int) (*r
 		genIDs = append(genIDs, g.ID)
 	}
 
-	filesMap, err := l.model.Generation().GetFilesByGenerationIDs(ctx, genIDs)
+	filesMap, err := l.repo.Generation().GetFilesByGenerationIDs(ctx, genIDs)
 	if err != nil {
 		// Log error but proceed? Or fail. Let's proceed with empty files.
 		log.Error(ctx, "get-generation-files-error", err, nil)
@@ -135,7 +135,7 @@ func (l *generationLogic) List(ctx context.Context, uid int, page, size int) (*r
 
 		if files, ok := filesMap[g.ID]; ok {
 			// Type 1: Input (Original), Type 2: Output (Generated)
-			if f, ok := files[entity.GenerationFileTypeInput]; ok {
+			if f, ok := files[model.GenerationFileTypeInput]; ok {
 				// Sign URL
 				signedUrl, err := l.service.Cloudflare().SignUrl(ctx, f.FileKey, 3600*24)
 				if err == nil {
@@ -143,7 +143,7 @@ func (l *generationLogic) List(ctx context.Context, uid int, page, size int) (*r
 				}
 				summary.OriginalFile = f
 			}
-			if f, ok := files[entity.GenerationFileTypeOutput]; ok {
+			if f, ok := files[model.GenerationFileTypeOutput]; ok {
 				// Sign URL
 				signedUrl, err := l.service.Cloudflare().SignUrl(ctx, f.FileKey, 3600*24)
 				if err == nil {
@@ -162,7 +162,7 @@ func (l *generationLogic) List(ctx context.Context, uid int, page, size int) (*r
 }
 
 func (l *generationLogic) Detail(ctx context.Context, uid int, id uint64) (*response.GenerationDetailResp, error) {
-	gen, err := l.model.Generation().GetByID(ctx, id)
+	gen, err := l.repo.Generation().GetByID(ctx, id)
 	if err != nil {
 		return nil, err
 	}
@@ -181,7 +181,7 @@ func (l *generationLogic) Detail(ctx context.Context, uid int, id uint64) (*resp
 }
 
 func (l *generationLogic) GetResult(ctx context.Context, uid int, id uint64) (*response.GenerationResponse, error) {
-	gen, err := l.model.Generation().GetByID(ctx, id)
+	gen, err := l.repo.Generation().GetByID(ctx, id)
 	if err != nil {
 		return nil, err
 	}
@@ -191,9 +191,9 @@ func (l *generationLogic) GetResult(ctx context.Context, uid int, id uint64) (*r
 	}
 
 	var imageUrl string
-	if gen.Status == entity.GenerationStatusSuccess {
+	if gen.Status == model.GenerationStatusSuccess {
 		// Get Output File
-		file, err := l.model.Generation().GetOutputFileByGenID(ctx, id)
+		file, err := l.repo.Generation().GetOutputFileByGenID(ctx, id)
 		if err == nil && file != nil {
 			// Sign URL
 			signedUrl, err := l.service.Cloudflare().SignUrl(ctx, file.FileKey, 3600*24) // 24 hours

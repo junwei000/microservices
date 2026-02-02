@@ -3,13 +3,13 @@ package router
 import (
 	"microservices/cache"
 	"microservices/controller"
-	"microservices/model"
+	"microservices/repo"
 	"microservices/router/middleware"
 	"microservices/service"
 )
 
 func init() {
-	fileController := controller.NewFileController(model.NewFactory(), cache.NewFactory(), service.NewFactory())
+	fileController := controller.NewFileController(repo.NewFactory(), cache.NewFactory(), service.NewFactory())
 
 	// 文件上传接口 - 需要认证和每秒1次的用户限频
 	router.POST("/files/upload",

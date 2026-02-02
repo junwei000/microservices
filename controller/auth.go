@@ -7,7 +7,7 @@ import (
 	"microservices/entity/request"
 	"microservices/entity/response"
 	"microservices/logic"
-	"microservices/model"
+	"microservices/repo"
 	"microservices/service"
 )
 
@@ -93,7 +93,7 @@ func (a *authController) Register(c *gin.Context, params *request.Register) (*re
 	}, nil
 }
 
-func NewAuthController(model model.Factory, cache cache.Factory, service service.Factory) AuthController {
+func NewAuthController(model repo.Factory, cache cache.Factory, service service.Factory) AuthController {
 	return &authController{
 		logic: logic.NewLogic(model, cache, service),
 	}

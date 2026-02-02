@@ -8,7 +8,7 @@ import (
 	"microservices/entity/request"
 	"microservices/entity/response"
 	"microservices/logic"
-	"microservices/model"
+	"microservices/repo"
 	"microservices/service"
 	"path/filepath"
 	"strings"
@@ -28,7 +28,7 @@ type fileController struct {
 }
 
 // NewFileController .
-func NewFileController(model model.Factory, cache cache.Factory, service service.Factory) FileController {
+func NewFileController(model repo.Factory, cache cache.Factory, service service.Factory) FileController {
 	return &fileController{
 		logic:   logic.NewLogic(model, cache, service),
 		service: service,

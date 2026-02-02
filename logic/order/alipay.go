@@ -5,14 +5,14 @@ import (
 	"fmt"
 	"microservices/entity/config"
 	"microservices/entity/consts"
-	entity "microservices/entity/model"
+	"microservices/entity/model"
 	"microservices/pkg/util"
 	"time"
 )
 
 // CreateAliPayPrepayOrder price 分为单位
 func (p *logic) CreateAliPayPrepayOrder(ctx context.Context, userId, price int, platform, channel, clientIP,
-	description string) (*entity.Order, string, error) {
+	description string) (*model.Order, string, error) {
 	// 根据支付渠道生成不同格式的 outTradeNo
 	var outTradeNo string
 	// 其他支付渠道使用时间戳格式
@@ -30,7 +30,7 @@ func (p *logic) CreateAliPayPrepayOrder(ctx context.Context, userId, price int, 
 
 	expiredAt := time.Now().Add(30 * time.Minute)
 	// 创建订单记录
-	order := &entity.Order{
+	order := &model.Order{
 		MchId:       mchId,
 		AppId:       appId,
 		OutTradeNo:  outTradeNo,
@@ -45,7 +45,7 @@ func (p *logic) CreateAliPayPrepayOrder(ctx context.Context, userId, price int, 
 		ExpireAt:    &expiredAt,
 	}
 
-	if err := p.model.Order().Create(ctx, order); err != nil {
+	if err := p.repo.Order().Create(ctx, order); err != nil {
 		return nil, "", fmt.Errorf("创建订单记录失败: %w", err)
 	}
 
@@ -54,7 +54,7 @@ func (p *logic) CreateAliPayPrepayOrder(ctx context.Context, userId, price int, 
 		result, err := p.srv.Alipay().CreateAppPrepay(ctx, outTradeNo, int64(price), description)
 		if err != nil {
 			// 如果支付宝支付失败，更新订单状态
-			_ = p.model.Order().Update(ctx, order.ID, map[string]interface{}{
+			_ = p.repo.Order().Update(ctx, order.ID, map[string]interface{}{
 				"status": consts.OrderStatusCreateError,
 			})
 			return nil, "", err

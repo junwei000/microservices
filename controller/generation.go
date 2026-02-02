@@ -6,7 +6,7 @@ import (
 	"microservices/entity/response"
 	"microservices/logic"
 	"microservices/logic/aigc"
-	"microservices/model"
+	"microservices/repo"
 	"microservices/service"
 
 	"github.com/gin-gonic/gin"
@@ -22,10 +22,10 @@ type Controller interface {
 type controller struct {
 	logic     logic.Factory
 	aigcLogic aigc.GenerationLogic
-	model     model.Factory
+	model     repo.Factory
 }
 
-func NewGenerationController(model model.Factory, cache cache.Factory, service service.Factory) Controller {
+func NewGenerationController(model repo.Factory, cache cache.Factory, service service.Factory) Controller {
 	return &controller{
 		logic:     logic.NewLogic(model, cache, service),
 		aigcLogic: aigc.NewGenerationLogic(model, cache, service),

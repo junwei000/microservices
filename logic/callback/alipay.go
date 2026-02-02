@@ -20,7 +20,7 @@ func (l *logic) HandleAlipayNotify(ctx context.Context, payload map[string]strin
 	if outTradeNo == "" {
 		return fmt.Errorf("异步通知缺少 out_trade_no")
 	}
-	order, err := l.model.Order().GetByOutTradeNo(ctx, outTradeNo)
+	order, err := l.repo.Order().GetByOutTradeNo(ctx, outTradeNo)
 	if err != nil {
 		return err
 	}

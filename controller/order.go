@@ -2,11 +2,11 @@ package controller
 
 import (
 	"microservices/cache"
-	entity "microservices/entity/model"
+	"microservices/entity/model"
 	"microservices/entity/request"
 	"microservices/entity/response"
 	"microservices/logic"
-	"microservices/model"
+	"microservices/repo"
 	"microservices/service"
 	"microservices/util"
 
@@ -14,7 +14,7 @@ import (
 )
 
 type OrderController interface {
-	GetDetail(c *gin.Context, id int) (*entity.Order, error)
+	GetDetail(c *gin.Context, id int) (*model.Order, error)
 	GetList(c *gin.Context, req *request.GetOrderListRequest) (*response.GetOrderListResponse, error)
 	CreateAlipayPrepay(c *gin.Context, req *request.CreateAlipayPrepay) (*response.CreateAlipayPrepay, error)
 	VerifyAppleReceipt(c *gin.Context, param *request.AppleVerifyReceiptParam) (*response.AppleVerifyReceipt, error)
@@ -25,13 +25,13 @@ type orderController struct {
 	logic logic.Factory
 }
 
-func NewOrderController(model model.Factory, cache cache.Factory, service service.Factory) OrderController {
+func NewOrderController(model repo.Factory, cache cache.Factory, service service.Factory) OrderController {
 	return &orderController{
 		logic: logic.NewLogic(model, cache, service),
 	}
 }
 
-func (ctrl *orderController) GetDetail(c *gin.Context, id int) (*entity.Order, error) {
+func (ctrl *orderController) GetDetail(c *gin.Context, id int) (*model.Order, error) {
 	auth, err := ctrl.logic.Auth().GetAuthUser(c.Request.Context())
 	if err != nil {
 		return nil, err

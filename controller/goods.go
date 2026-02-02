@@ -4,7 +4,7 @@ import (
 	"microservices/cache"
 	"microservices/entity/response"
 	"microservices/logic"
-	repo "microservices/model"
+	"microservices/repo"
 	"microservices/service"
 
 	"github.com/gin-gonic/gin"
