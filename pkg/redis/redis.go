@@ -2,6 +2,7 @@ package redis
 
 import (
 	"context"
+	"crypto/tls"
 	"fmt"
 	"github.com/redis/go-redis/v9"
 )
@@ -11,6 +12,9 @@ func NewRedis(opts *Options) (*redis.Client, error) {
 		Addr:     fmt.Sprintf("%s:%d", opts.Host, opts.Port),
 		Password: opts.Password,
 		DB:       opts.DB,
+		TLSConfig: &tls.Config{
+			MinVersion: tls.VersionTLS12,
+		},
 	})
 	conn.AddHook(NewRedisLogHook())
 	_, err := conn.Ping(context.Background()).Result()

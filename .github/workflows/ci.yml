@@ -35,26 +35,26 @@ jobs:
         id: meta
         run: echo "tag=$(TZ=Asia/Shanghai date +'%Y-%m-%d-%H-%M-%S')" >> $GITHUB_OUTPUT
 
-      # 1、认证 GCP
-      - name: Authenticate to GCP
-        uses: google-github-actions/auth@v2
-        with:
-          credentials_json: ${{ secrets.GCP_SA_KEY }}
-      
-      # 2、设置 gcloud
-      - name: Setup gcloud
-        uses: google-github-actions/setup-gcloud@v2
-
-      # 3、配置 Docker 认证
-      - name: Configure Docker
-        run: |
-          gcloud auth configure-docker ${GKE_DOCKER_HUB}
-
-      # 4、构建并推送镜像
-      - name: Build and Push Docker Image
-        run: |
-          docker build -t ${GKE_DOCKER_HUB}/${GCP_PROJECT_ID}/${REPO_NAME}/${IMAGE_NAME}:${{steps.meta.outputs.tag}} .
-#          docker push ${GKE_DOCKER_HUB}/${GCP_PROJECT_ID}/${REPO_NAME}/${IMAGE_NAME}:${{steps.meta.outputs.tag}}
+#      # 1、认证 GCP
+#      - name: Authenticate to GCP
+#        uses: google-github-actions/auth@v2
+#        with:
+#          credentials_json: ${{ secrets.GCP_SA_KEY }}
+#
+#      # 2、设置 gcloud
+#      - name: Setup gcloud
+#        uses: google-github-actions/setup-gcloud@v2
+#
+#      # 3、配置 Docker 认证
+#      - name: Configure Docker
+#        run: |
+#          gcloud auth configure-docker ${GKE_DOCKER_HUB}
+#
+#      # 4、构建并推送镜像
+#      - name: Build and Push Docker Image
+#        run: |
+#          docker build -t ${GKE_DOCKER_HUB}/${GCP_PROJECT_ID}/${REPO_NAME}/${IMAGE_NAME}:${{steps.meta.outputs.tag}} .
+##          docker push ${GKE_DOCKER_HUB}/${GCP_PROJECT_ID}/${REPO_NAME}/${IMAGE_NAME}:${{steps.meta.outputs.tag}}
 
 #  deploy:
 #    needs: build-push

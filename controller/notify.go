@@ -13,7 +13,7 @@ import (
 )
 
 type NotifyController interface {
-	SendSms(c *gin.Context, req request.SendSms) (*response.SendSms, error)
+	SendSms(c *gin.Context, req *request.SendSms) (*response.SendSms, error)
 	SendEmail(c *gin.Context) (*response.SendEmail, error)
 }
 
@@ -21,7 +21,7 @@ type notifyController struct {
 	logic logic.Factory
 }
 
-func (n *notifyController) SendSms(c *gin.Context, req request.SendSms) (*response.SendSms, error) {
+func (n *notifyController) SendSms(c *gin.Context, req *request.SendSms) (*response.SendSms, error) {
 	if err := n.logic.Notify().SendSmsCode(c.Request.Context(), req.Phone, strconv.Itoa(util.RandomN(4))); err != nil {
 		return nil, err
 	}
